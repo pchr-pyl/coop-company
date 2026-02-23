@@ -1,11 +1,20 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import { Icon, divIcon } from 'leaflet';
+import React, { useEffect, useRef, memo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
+import { divIcon, Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
+// Constants
+const THAILAND_CENTER = [13.0, 101.5];
+const DEFAULT_ZOOM = 6;
+const MARKER_SIZE = 16;
+const CLUSTER_RADIUS = 60;
+const USER_LOCATION_RADIUS = 10;
+
+// Configure Leaflet icons (only once)
 delete Icon.Default.prototype._getIconUrl;
 Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -13,86 +22,198 @@ Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-const FIELD_COLORS = {
-  'Tech & Data': '#3B82F6',
-  'Engineering': '#F59E0B',
-  'Health & Medical': '#EF4444',
-  'Finance & Banking': '#14B8A6',
-  'Education': '#06B6D4',
-  'Government': '#6366F1',
-  'Business & Trade': '#10B981',
-  'Agriculture': '#65A30D',
-  'Media & Creative': '#EC4899',
-  'Hospitality & Tourism': '#F97316',
-  'General': '#6B7280',
+const FACULTY_COLORS = {
+  'การบัญชีและการเงิน': '#3B82F6',
+  'การจัดการ': '#F59E0B',
+  'สารสนเทศศาสตร์': '#8B5CF6',
+  'รัฐศาสตร์และนิติศาสตร์': '#EF4444',
+  'วิศวกรรมศาสตร์': '#F97316',
+  'พยาบาลศาสตร์': '#EC4899',
+  'สาธารณสุขศาสตร์': '#10B981',
+  'วิทยาศาสตร์': '#06B6D4',
+  'ศิลปศาสตร์': '#6366F1',
+  'สถาปัตยกรรมศาสตร์': '#84CC16',
 };
 
-function makeIcon(careerFields) {
-  const color = FIELD_COLORS[careerFields?.[0]] ?? '#6B7280';
+// Utility functions
+const getFacultyColor = (faculty) => FACULTY_COLORS[faculty] ?? '#6B7280';
+
+const createMarkerIcon = (faculty) => {
+  const color = getFacultyColor(faculty);
   return divIcon({
     className: '',
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-    popupAnchor: [0, -10],
+    html: `<div style="
+      width:${MARKER_SIZE}px;height:${MARKER_SIZE}px;border-radius:50%;
+      background:${color};
+      border:2.5px solid white;
+      box-shadow:0 2px 6px rgba(0,0,0,0.35);
+    "></div>`,
+    iconSize: [MARKER_SIZE, MARKER_SIZE],
+    iconAnchor: [MARKER_SIZE / 2, MARKER_SIZE / 2],
+    popupAnchor: [0, -MARKER_SIZE - 4],
   });
-}
+};
 
-// Must be INSIDE MapContainer
-function FitBounds({ companies }) {
+const createClusterIcon = (cluster) => {
+  const count = cluster.getChildCount();
+  const size = count < 10 ? 36 : count < 100 ? 42 : 50;
+  const bg = count < 10 ? '#3B82F6' : count < 100 ? '#F59E0B' : '#EF4444';
+  const fontSize = count < 100 ? 13 : 11;
+  
+  return divIcon({
+    className: '',
+    html: `<div style="
+      width:${size}px;height:${size}px;border-radius:50%;
+      background:${bg};
+      border:3px solid white;
+      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+      display:flex;align-items:center;justify-content:center;
+      color:white;font-weight:700;font-size:${fontSize}px;
+      font-family:sans-serif;
+    ">${count}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+};
+
+// Memoized components
+const FlyToUser = memo(({ userLocation }) => {
   const map = useMap();
-  useEffect(() => {
-    if (!companies?.length) return;
-    const valid = companies.filter(c => c.lat && c.lng);
-    if (!valid.length) return;
-    if (valid.length === 1) {
-      map.setView([valid[0].lat, valid[0].lng], 12);
-    } else {
-      map.fitBounds(valid.map(c => [c.lat, c.lng]), { padding: [40, 40], maxZoom: 11 });
-    }
-  }, [companies, map]);
-  return null;
-}
+  const prevLocationRef = useRef(null);
 
-export default function MapComponent({ companies = [], onMarkerClick }) {
+  useEffect(() => {
+    if (!userLocation) return;
+    
+    const { lat, lng } = userLocation;
+    if (prevLocationRef.current?.lat === lat && prevLocationRef.current?.lng === lng) return;
+    
+    prevLocationRef.current = userLocation;
+    map.flyTo([lat, lng], 13, { duration: 1.5 });
+  }, [userLocation, map]);
+
+  return null;
+});
+
+FlyToUser.displayName = 'FlyToUser';
+
+const UserLocationMarker = memo(({ userLocation }) => (
+  <CircleMarker
+    center={[userLocation.lat, userLocation.lng]}
+    radius={USER_LOCATION_RADIUS}
+    pathOptions={{ color: '#10B981', fillColor: '#10B981', fillOpacity: 0.8, weight: 3 }}
+  >
+    <Popup>
+      <div style={{ fontSize: 13, fontWeight: 600 }}>📍 ตำแหน่งของคุณ</div>
+    </Popup>
+  </CircleMarker>
+));
+
+UserLocationMarker.displayName = 'UserLocationMarker';
+
+const CompanyMarker = memo(({ company, onMarkerClick }) => {
+  const icon = useMemo(() => createMarkerIcon(company.faculty), [company.faculty]);
+  
+  return (
+    <Marker
+      position={[company.lat, company.lng]}
+      icon={icon}
+      eventHandlers={{ click: () => onMarkerClick?.(company) }}
+    >
+      <Popup minWidth={240} maxWidth={300}>
+        <div style={{ fontFamily: 'sans-serif' }}>
+          <p style={{
+            fontWeight: 700, fontSize: 13, marginBottom: 8,
+            color: '#1e293b', lineHeight: 1.4,
+          }}>
+            {company.companyName}
+          </p>
+
+          {company.faculty && (
+            <div style={{ marginBottom: 4 }}>
+              <span style={{
+                display: 'inline-block',
+                padding: '2px 10px', borderRadius: 12,
+                background: `${getFacultyColor(company.faculty)}18`,
+                color: getFacultyColor(company.faculty),
+                border: `1px solid ${getFacultyColor(company.faculty)}44`,
+                fontSize: 11, fontWeight: 600,
+              }}>
+                🎓 {company.faculty}
+              </span>
+            </div>
+          )}
+
+          {company.program && (
+            <p style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>
+              📚 <strong>{company.program}</strong>
+            </p>
+          )}
+
+          <p style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>
+            📍 {company.province || '—'}
+          </p>
+
+          {company.lat && company.lng && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${company.lat},${company.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block', textAlign: 'center',
+                padding: '6px 12px', borderRadius: 8,
+                background: '#2563EB', color: 'white',
+                fontSize: 12, fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              🗺️ เปิดใน Google Maps
+            </a>
+          )}
+        </div>
+      </Popup>
+    </Marker>
+  );
+});
+
+CompanyMarker.displayName = 'CompanyMarker';
+
+export default function MapComponent({ companies = [], onMarkerClick, userLocation }) {
+  const validCompanies = useMemo(() => 
+    companies.filter(c => c.lat != null && c.lng != null), 
+    [companies]
+  );
+
   return (
     <MapContainer
-      center={[13.0, 101.0]}
-      zoom={6}
+      center={THAILAND_CENTER}
+      zoom={DEFAULT_ZOOM}
       scrollWheelZoom
       style={{ height: '100%', width: '100%' }}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitBounds companies={companies} />
-      {companies.map((company) => (
-        <Marker
-          key={company.id}
-          position={[company.lat, company.lng]}
-          icon={makeIcon(company.careerFields)}
-          eventHandlers={{ click: () => onMarkerClick?.(company) }}
-        >
-          <Popup>
-            <div style={{ minWidth: 220 }}>
-              <p style={{ fontWeight: 'bold', marginBottom: 6, fontSize: 13 }}>{company.companyName}</p>
-              <p style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>📍 {company.province} — {company.region}</p>
-              {company.zipCode && <p style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>📮 {company.zipCode}</p>}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                {(company.careerFields ?? []).map((f, i) => (
-                  <span key={i} style={{
-                    fontSize: 11, padding: '2px 8px', borderRadius: 12,
-                    background: `${FIELD_COLORS[f] ?? '#6B7280'}22`,
-                    color: FIELD_COLORS[f] ?? '#6B7280',
-                    border: `1px solid ${FIELD_COLORS[f] ?? '#6B7280'}55`,
-                  }}>{f}</span>
-                ))}
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+
+      <FlyToUser userLocation={userLocation} />
+
+      {userLocation && <UserLocationMarker userLocation={userLocation} />}
+
+      <MarkerClusterGroup
+        chunkedLoading
+        iconCreateFunction={createClusterIcon}
+        maxClusterRadius={CLUSTER_RADIUS}
+        showCoverageOnHover={false}
+        spiderfyOnMaxZoom
+      >
+        {validCompanies.map(company => (
+          <CompanyMarker
+            key={company.id}
+            company={company}
+            onMarkerClick={onMarkerClick}
+          />
+        ))}
+      </MarkerClusterGroup>
     </MapContainer>
   );
 }

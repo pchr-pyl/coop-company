@@ -1,5 +1,14 @@
 {
   "dependencies": {
+<<<<<<< HEAD
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.574.0",
+    "papaparse": "^5.5.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
+=======
+>>>>>>> bdd1ceca35e18305819c49e8cf17dd50dd322f54
     "react-leaflet-cluster": "^4.0.0"
   }
 }
