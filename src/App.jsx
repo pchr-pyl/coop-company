@@ -1,32 +1,125 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { MapPin, Building2, GraduationCap, BookOpen, X } from 'lucide-react';
 import MapComponent from './components/MapComponent.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import CompanyList from './components/CompanyList.jsx';
 import { loadCompanies } from './utils/dataProcessor';
 
-export default function App() {
+// Constants
+const INITIAL_FILTERS = {
+  search: '',
+  faculty: '',
+  program: '',
+  province: '',
+};
+
+const ERROR_MESSAGES = {
+  geolocation: 'ไม่สามารถระบุตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง',
+  loading: 'ไม่สามารถโหลดข้อมูลได้',
+};
+
+// Custom hooks
+function useCompanies() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    search: '',
-    faculty: '',
-    program: '',
-    province: '',
-  });
-  const [selectedCompany, setSelectedCompany] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    loadCompanies()
-      .then(data => { setCompanies(data); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
+    let isMounted = true;
+    
+    const fetchCompanies = async () => {
+      try {
+        const data = await loadCompanies();
+        if (isMounted) {
+          setCompanies(data);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCompanies();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
+  return { companies, loading, error };
+}
+
+function useGeolocation() {
+  const [userLocation, setUserLocation] = useState(null);
+
+  const handleLocateMe = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert(ERROR_MESSAGES.geolocation);
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ 
+          lat: pos.coords.latitude, 
+          lng: pos.coords.longitude 
+        });
+      },
+      () => alert(ERROR_MESSAGES.geolocation)
+    );
+  }, []);
+
+  return { userLocation, handleLocateMe };
+}
+
+// Memoized components
+const LoadingSpinner = memo(() => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-5" />
+      <p className="text-gray-700 font-semibold text-lg">กำลังโหลดข้อมูล...</p>
+      <p className="text-gray-400 text-sm mt-1">Loading company data</p>
+    </div>
+  </div>
+));
+
+LoadingSpinner.displayName = 'LoadingSpinner';
+
+const ErrorDisplay = memo(({ error }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <span className="text-3xl">⚠️</span>
+      </div>
+      <h2 className="text-lg font-bold text-gray-900 mb-2">{ERROR_MESSAGES.loading}</h2>
+      <p className="text-gray-600 text-sm mb-4">{error}</p>
+      <p className="text-gray-400 text-xs mb-4">
+        ตรวจสอบว่าไฟล์ <code className="bg-gray-100 px-1 rounded">companies.csv</code> อยู่ในโฟลเดอร์ <code className="bg-gray-100 px-1 rounded">/public</code>
+      </p>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+      >
+        ลองใหม่
+      </button>
+    </div>
+  </div>
+));
+
+ErrorDisplay.displayName = 'ErrorDisplay';
+
+export default function App() {
+  const { companies, loading, error } = useCompanies();
+  const { userLocation, handleLocateMe } = useGeolocation();
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const filteredCompanies = useMemo(() => {
-    return (companies ?? []).filter(c => {
+    return companies.filter(c => {
       if (filters.search) {
         const s = filters.search.toLowerCase();
         if (!c.companyName?.toLowerCase().includes(s)) return false;
@@ -38,45 +131,17 @@ export default function App() {
     });
   }, [companies, filters]);
 
-  const handleLocateMe = useCallback(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      pos => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => alert('ไม่สามารถระบุตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง'),
-    );
+  const handleFilterChange = useCallback((patch) => {
+    setFilters(prev => ({ ...prev, ...patch }));
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-5" />
-          <p className="text-gray-700 font-semibold text-lg">กำลังโหลดข้อมูล...</p>
-          <p className="text-gray-400 text-sm mt-1">Loading company data</p>
-        </div>
-      </div>
-    );
-  }
+  const handleCompanySelect = useCallback((company) => {
+    setSelectedCompany(company);
+    setSidebarOpen(false);
+  }, []);
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">ไม่สามารถโหลดข้อมูลได้</h2>
-          <p className="text-gray-600 text-sm mb-4">{error}</p>
-          <p className="text-gray-400 text-xs mb-4">
-            ตรวจสอบว่าไฟล์ <code className="bg-gray-100 px-1 rounded">companies.csv</code> อยู่ในโฟลเดอร์ <code className="bg-gray-100 px-1 rounded">/public</code>
-          </p>
-          <button onClick={() => window.location.reload()} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
-            ลองใหม่
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorDisplay error={error} />;
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
@@ -147,7 +212,7 @@ export default function App() {
           <Sidebar
             companies={companies}
             filters={filters}
-            onFilterChange={patch => setFilters(f => ({ ...f, ...patch }))}
+            onFilterChange={handleFilterChange}
             filteredCount={filteredCompanies.length}
             totalCount={companies.length}
             onLocateMe={handleLocateMe}
@@ -155,7 +220,7 @@ export default function App() {
 
           <CompanyList
             companies={filteredCompanies}
-            onCompanyClick={c => { setSelectedCompany(c); setSidebarOpen(false); }}
+            onCompanyClick={handleCompanySelect}
           />
         </aside>
 
