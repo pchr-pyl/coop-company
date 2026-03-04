@@ -1,0 +1,33 @@
+{
+  "index": "coop_companies",
+  "mappings": {
+    "properties": {
+      "company_name": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "industry": {
+        "type": "keyword"
+      },
+      "province": {
+        "type": "keyword"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "accept_interns": {
+        "type": "boolean"
+      }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
