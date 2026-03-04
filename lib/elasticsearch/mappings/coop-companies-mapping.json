@@ -1,0 +1,167 @@
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 2,
+    "analysis": {
+      "analyzer": {
+        "thai_analyzer": {
+          "type": "custom",
+          "tokenizer": "thai",
+          "filter": ["lowercase", "thai_stop", "asciifolding"]
+        },
+        "thai_search_analyzer": {
+          "type": "custom",
+          "tokenizer": "thai",
+          "filter": ["lowercase", "thai_stop", "asciifolding"]
+        },
+        "edge_ngram_analyzer": {
+          "type": "custom",
+          "tokenizer": "edge_ngram_tokenizer",
+          "filter": ["lowercase"]
+        }
+      },
+      "tokenizer": {
+        "edge_ngram_tokenizer": {
+          "type": "edge_ngram",
+          "min_gram": 2,
+          "max_gram": 10,
+          "token_chars": ["letter", "digit"]
+        }
+      },
+      "filter": {
+        "thai_stop": {
+          "type": "stop",
+          "stopwords": ["ที่", "และ", "หรือ", "ใน", "ของ", "เป็น", "มี", "ได้"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "companyId": {
+        "type": "keyword"
+      },
+      "companyName": {
+        "type": "text",
+        "analyzer": "thai_analyzer",
+        "search_analyzer": "thai_search_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "edge_ngram": {
+            "type": "text",
+            "analyzer": "edge_ngram_analyzer"
+          }
+        }
+      },
+      "companyNameEn": {
+        "type": "text",
+        "analyzer": "standard",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "faculty": {
+        "type": "text",
+        "analyzer": "thai_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "program": {
+        "type": "text",
+        "analyzer": "thai_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "province": {
+        "type": "text",
+        "analyzer": "thai_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "region": {
+        "type": "keyword"
+      },
+      "address": {
+        "type": "text",
+        "analyzer": "thai_analyzer"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "contactInfo": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "keyword"
+          },
+          "phone": {
+            "type": "keyword"
+          },
+          "website": {
+            "type": "keyword"
+          }
+        }
+      },
+      "industry": {
+        "type": "keyword"
+      },
+      "companySize": {
+        "type": "keyword"
+      },
+      "internshipPositions": {
+        "type": "nested",
+        "properties": {
+          "title": {
+            "type": "text",
+            "analyzer": "thai_analyzer"
+          },
+          "department": {
+            "type": "keyword"
+          },
+          "slots": {
+            "type": "integer"
+          }
+        }
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "isActive": {
+        "type": "boolean"
+      },
+      "isPremium": {
+        "type": "boolean"
+      },
+      "rating": {
+        "type": "float"
+      },
+      "reviewCount": {
+        "type": "integer"
+      },
+      "createdAt": {
+        "type": "date"
+      },
+      "updatedAt": {
+        "type": "date"
+      },
+      "lastVerifiedAt": {
+        "type": "date"
+      }
+    }
+  }
+}
