@@ -106,7 +106,7 @@ export interface ErrorResponse {
   error: {
     message: string;
     code?: string;
-    details?: any;
+    details?: unknown;
   };
 }
 
@@ -116,10 +116,10 @@ export interface ErrorResponse {
 
 export interface ElasticsearchQuery {
   bool: {
-    must?: any[];
-    should?: any[];
-    filter?: any[];
-    must_not?: any[];
+    must?: object[];
+    should?: object[];
+    filter?: object[];
+    must_not?: object[];
   };
 }
 

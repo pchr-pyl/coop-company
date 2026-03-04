@@ -17,7 +17,13 @@ export function getElasticsearchClient(): Client {
     return esClient;
   }
 
-  const clientConfig: any = {
+  const clientConfig: {
+    node: string;
+    maxRetries: number;
+    requestTimeout: number;
+    sniffOnStart: boolean;
+    auth?: { apiKey: string } | { username: string; password: string };
+  } = {
     node: ELASTICSEARCH_NODE,
     maxRetries: 3,
     requestTimeout: 30000,
@@ -58,10 +64,14 @@ export async function ensureIndexExists(): Promise<void> {
       
       // Load mapping from JSON file
       const mapping = await import('./mappings/coop-companies-mapping.json');
-      
+
+      // The JSON file contains only settings/mappings — not the full request
+      // object — so we cast to `unknown` first to bypass the strict property
+      // type checks that would otherwise require every field type to be named.
+      type CreateBody = Omit<Parameters<typeof client.indices.create>[0], 'index'>;
       await client.indices.create({
         index: COMPANY_INDEX,
-        body: mapping,
+        ...(mapping.default as unknown as CreateBody),
       });
 
       console.log(`Index ${COMPANY_INDEX} created successfully`);
