@@ -1,33 +1,75 @@
 {
-  "index": "coop_companies",
+  "index": "coop_companies_index",
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1,
+    "analysis": {
+      "analyzer": {
+        "thai_standard_analyzer": {
+          "type": "custom",
+          "tokenizer": "thai",
+          "filter": ["lowercase", "trim"]
+        }
+      }
+    }
+  },
   "mappings": {
     "properties": {
       "company_name": {
         "type": "text",
         "analyzer": "standard",
         "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
+          "keyword": { "type": "keyword", "ignore_above": 512 },
+          "thai": { "type": "text", "analyzer": "thai_standard_analyzer" }
         }
       },
       "industry": {
         "type": "keyword"
       },
-      "province": {
+      "program": {
         "type": "keyword"
+      },
+      "province": {
+        "type": "keyword",
+        "fields": {
+          "text": { "type": "text", "analyzer": "standard" }
+        }
       },
       "location": {
         "type": "geo_point"
       },
       "accept_interns": {
         "type": "boolean"
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "thai_standard_analyzer"
+      },
+      "address": {
+        "type": "text",
+        "analyzer": "standard"
+      },
+      "contact": {
+        "type": "object",
+        "properties": {
+          "phone":   { "type": "keyword" },
+          "email":   { "type": "keyword" },
+          "website": { "type": "keyword" }
+        }
+      },
+      "benefits": {
+        "type": "keyword"
+      },
+      "company_size": {
+        "type": "keyword"
+      },
+      "established_year": {
+        "type": "integer"
+      },
+      "mongodb_id": {
+        "type": "keyword",
+        "doc_values": false
       }
     }
-  },
-  "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 0
   }
 }

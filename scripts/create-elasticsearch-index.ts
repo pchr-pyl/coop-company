@@ -1,18 +1,22 @@
 /**
  * Elasticsearch index creation and seed script.
  *
- * Run with: npx ts-node --esm scripts/create-elasticsearch-index.ts
+ * Creates `coop_companies_index` with the mapping in
+ * `scripts/elasticsearch-mapping.json` and seeds a few sample documents.
+ *
+ * Run with:
+ *   ELASTICSEARCH_URL=http://localhost:9200 npx ts-node --esm scripts/create-elasticsearch-index.ts
  *
  * Required environment variables:
- *   ELASTICSEARCH_URL  – e.g. http://localhost:9200
- *   ELASTICSEARCH_API_KEY – optional API key auth
+ *   ELASTICSEARCH_URL    – e.g. http://localhost:9200
+ *   ELASTICSEARCH_API_KEY – optional API key for authenticated clusters
  */
 
 import { Client } from '@elastic/elasticsearch';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const INDEX_NAME = 'coop_companies';
+const INDEX_NAME = 'coop_companies_index';
 
 const client = new Client({
   node: process.env.ELASTICSEARCH_URL ?? 'http://localhost:9200',
@@ -21,7 +25,7 @@ const client = new Client({
     : {}),
 });
 
-async function createIndex() {
+async function createIndex(): Promise<void> {
   const exists = await client.indices.exists({ index: INDEX_NAME });
   if (exists) {
     console.log(`Index "${INDEX_NAME}" already exists – skipping creation.`);
@@ -40,12 +44,12 @@ async function createIndex() {
   console.log(`Index "${INDEX_NAME}" created successfully.`);
 }
 
-/** Example: seed a few sample companies. */
-async function seedSampleData() {
+async function seedSampleData(): Promise<void> {
   const sampleDocs = [
     {
       company_name: 'ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร สาขาต่างๆ',
       industry: 'การบัญชีและการเงิน',
+      program: 'การเงิน',
       province: 'ปัตตานี',
       location: { lat: 6.854087, lon: 101.216555 },
       accept_interns: true,
@@ -53,6 +57,7 @@ async function seedSampleData() {
     {
       company_name: 'ธนาคารออมสิน สำนักงานใหญ่ และสาขา',
       industry: 'การบัญชีและการเงิน',
+      program: 'การเงิน',
       province: 'นครศรีธรรมราช',
       location: { lat: 8.459205, lon: 99.944961 },
       accept_interns: true,
@@ -60,6 +65,7 @@ async function seedSampleData() {
     {
       company_name: 'บริษัท คิงเพาเวอร์ อินเตอร์เนชั่นแนล จำกัด',
       industry: 'การจัดการ',
+      program: 'การจัดการ',
       province: 'กรุงเทพมหานคร',
       location: { lat: 13.781385, lon: 100.469559 },
       accept_interns: true,
@@ -67,6 +73,7 @@ async function seedSampleData() {
     {
       company_name: 'มหาวิทยาลัยวลัยลักษณ์',
       industry: 'การศึกษา',
+      program: 'การบริหาร',
       province: 'นครศรีธรรมราช',
       location: { lat: 8.6428, lon: 99.8973 },
       accept_interns: true,
@@ -82,11 +89,11 @@ async function seedSampleData() {
   if (result.errors) {
     console.error('Bulk indexing encountered errors:', result.items);
   } else {
-    console.log(`Seeded ${sampleDocs.length} sample documents.`);
+    console.log(`Seeded ${sampleDocs.length} sample documents into "${INDEX_NAME}".`);
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   try {
     await createIndex();
     await seedSampleData();

@@ -4,10 +4,10 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { WU_CENTER } from '@/constants';
 import type { Company } from '@/types';
 
-// Fix Leaflet default marker icons in webpack/Next.js bundlers
-// by pointing directly to the CDN assets.
+// Leaflet default icon fix for webpack/Next.js bundlers — use CDN URLs.
 const defaultIcon = new Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl:
@@ -19,13 +19,12 @@ const defaultIcon = new Icon({
   shadowSize: [41, 41],
 });
 
-// Walailak University, Nakhon Si Thammarat
-const DEFAULT_CENTER: [number, number] = [8.6428, 99.8973];
 const DEFAULT_ZOOM = 7;
 
-/** Re-centres the map whenever the companies list changes. */
+/** Re-fits the map viewport to cover all visible markers whenever results change. */
 function FitBoundsEffect({ companies }: { companies: Company[] }) {
   const map = useMap();
+
   useEffect(() => {
     const valid = companies.filter(
       (c) => c.location.lat !== 0 && c.location.lon !== 0,
@@ -48,7 +47,7 @@ interface MapComponentProps {
 export default function MapComponent({ companies }: MapComponentProps) {
   return (
     <MapContainer
-      center={DEFAULT_CENTER}
+      center={WU_CENTER}
       zoom={DEFAULT_ZOOM}
       className="w-full h-full rounded-xl"
     >
@@ -63,16 +62,18 @@ export default function MapComponent({ companies }: MapComponentProps) {
         const { lat, lon } = company.location;
         if (lat === 0 && lon === 0) return null;
         return (
-          <Marker
-            key={company.id}
-            position={[lat, lon]}
-            icon={defaultIcon}
-          >
+          <Marker key={company.id} position={[lat, lon]} icon={defaultIcon}>
             <Popup>
-              <div className="text-sm space-y-1 min-w-[180px]">
-                <p className="font-semibold text-gray-900">
+              <div className="text-sm space-y-1 min-w-[190px]">
+                <p className="font-semibold text-gray-900 leading-snug">
                   {company.company_name}
                 </p>
+                {company.program && (
+                  <p className="text-gray-600">
+                    <span className="font-medium">หลักสูตร:</span>{' '}
+                    {company.program}
+                  </p>
+                )}
                 <p className="text-gray-600">
                   <span className="font-medium">สำนักวิชา:</span>{' '}
                   {company.industry}
@@ -81,10 +82,22 @@ export default function MapComponent({ companies }: MapComponentProps) {
                   <span className="font-medium">จังหวัด:</span>{' '}
                   {company.province}
                 </p>
+                {company.distance && (
+                  <p className="text-green-700 font-medium">
+                    📍 ห่างจากคุณ {company.distance}
+                  </p>
+                )}
                 <p className="text-gray-600">
                   <span className="font-medium">รับนักศึกษา:</span>{' '}
                   {company.accept_interns ? '✅ ใช่' : '❌ ไม่'}
                 </p>
+                {company.description && (
+                  <p className="text-gray-500 text-xs leading-relaxed border-t border-gray-100 pt-1 mt-1">
+                    {company.description.length > 120
+                      ? `${company.description.slice(0, 120)}…`
+                      : company.description}
+                  </p>
+                )}
               </div>
             </Popup>
           </Marker>
