@@ -10,6 +10,8 @@ lerna-debug.log*
 dist/
 dist-ssr/
 build/
+.next/
+out/
 
 # Environment variables
 .env
